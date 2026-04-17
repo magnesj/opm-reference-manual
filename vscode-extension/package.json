@@ -1,0 +1,123 @@
+{
+  "name": "opm-flow",
+  "displayName": "OPM Flow",
+  "description": "Language support for OPM Flow reservoir simulation deck files",
+  "version": "0.4.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:opm-flow",
+    "onView:opm-flow.docsView"
+  ],
+  "main": "./out/extension",
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "opm-flow.docsView",
+          "name": "OPM Keyword Reference"
+        }
+      ]
+    },
+    "languages": [
+      {
+        "id": "opm-flow",
+        "aliases": [
+          "OPM Flow",
+          "reservoir-simulation"
+        ],
+        "extensions": [
+          ".data",
+          ".DATA",
+          ".inc",
+          ".INC",
+          ".include",
+          ".sch",
+          ".SCH",
+          ".schedule",
+          ".grdecl",
+          ".GRDECL",
+          ".vfp",
+          ".VFP",
+          ".prop",
+          ".Ecl",
+          ".ecl",
+          ".summary",
+          ".aqucon",
+          ".aqunum",
+          ".dimens",
+          ".eqlnum",
+          ".equil",
+          ".fault",
+          ".fipnum",
+          ".multnum",
+          ".multregp",
+          ".multregt",
+          ".nnc",
+          ".ntg",
+          ".opernum",
+          ".perm",
+          ".poro",
+          ".pvt",
+          ".rocknum",
+          ".satnum",
+          ".sattab",
+          ".tabdims",
+          ".thpres"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "opm-flow",
+        "scopeName": "source.opm-flow",
+        "path": "./syntaxes/opm-flow.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "opm-flow.copyKeywordContext",
+        "title": "OPM Flow: Copy Keyword Context for AI"
+      },
+      {
+        "command": "opm-flow.generateKeywordReference",
+        "title": "OPM Flow: Generate Keyword Reference"
+      },
+      {
+        "command": "opm-flow.alignRecordColumns",
+        "title": "OPM Flow: Align Record Columns"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "opm-flow.copyKeywordContext",
+          "when": "resourceLangId == opm-flow",
+          "group": "opm-flow"
+        },
+        {
+          "command": "opm-flow.alignRecordColumns",
+          "when": "resourceLangId == opm-flow",
+          "group": "opm-flow"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "build-index": "python ../scripts/build_keyword_index.py --manual-dir .. --output data/keyword_index.json --compact data/keyword_index_compact.json"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "18.x",
+    "typescript": "^5.0.0"
+  }
+}
