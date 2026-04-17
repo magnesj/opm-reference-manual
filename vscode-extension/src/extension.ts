@@ -300,6 +300,109 @@ function appendParameterTable(md: vscode.MarkdownString, parameters: Parameter[]
 }
 
 // ---------------------------------------------------------------------------
+// Record-column alignment
+// ---------------------------------------------------------------------------
+
+const NUMERIC_TOKEN_RE = /^(\*|\d+\*|[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?)$/;
+
+interface RecordLine {
+  indent: string;
+  tokens: string[];
+  trailComment: string;
+}
+
+function parseRecordLine(line: string): RecordLine | null {
+  const indent = line.match(/^[ \t]*/)![0];
+  let i = indent.length;
+  const tokens: string[] = [];
+
+  while (i < line.length) {
+    while (i < line.length && (line[i] === ' ' || line[i] === '\t')) i++;
+    if (i >= line.length) return null;
+    if (line[i] === '-' && line[i + 1] === '-') return null;
+    if (line[i] === '/') break;
+
+    const start = i;
+    if (line[i] === "'") {
+      i++;
+      while (i < line.length && line[i] !== "'") i++;
+      if (i < line.length) i++;
+      tokens.push(line.substring(start, i));
+    } else {
+      while (i < line.length) {
+        const c = line[i];
+        if (c === ' ' || c === '\t' || c === '/') break;
+        if (c === '-' && line[i + 1] === '-') break;
+        i++;
+      }
+      tokens.push(line.substring(start, i));
+    }
+  }
+
+  if (i >= line.length || line[i] !== '/') return null;
+  i++;
+
+  const rest = line.substring(i).replace(/^[ \t]+/, '').trimEnd();
+  if (rest && !rest.startsWith('--')) return null;
+  if (tokens.length === 0) return null;
+  return { indent, tokens, trailComment: rest };
+}
+
+function formatRecordGroup(records: RecordLine[]): string[] {
+  const nCols = records[0].tokens.length;
+  const widths = new Array(nCols).fill(0);
+  const numeric = new Array(nCols).fill(true);
+  for (const r of records) {
+    for (let c = 0; c < nCols; c++) {
+      const t = r.tokens[c];
+      if (t.length > widths[c]) widths[c] = t.length;
+      if (!NUMERIC_TOKEN_RE.test(t)) numeric[c] = false;
+    }
+  }
+  const groupIndent = records[0].indent;
+  return records.map(r => {
+    const cells = r.tokens.map((t, c) =>
+      numeric[c] ? t.padStart(widths[c]) : t.padEnd(widths[c])
+    );
+    const body = groupIndent + cells.join(' ') + ' /';
+    return r.trailComment ? `${body} ${r.trailComment}` : body;
+  });
+}
+
+function computeAlignEdits(document: vscode.TextDocument, range?: vscode.Range): vscode.TextEdit[] {
+  const edits: vscode.TextEdit[] = [];
+  const first = range ? range.start.line : 0;
+  const last = range ? range.end.line : document.lineCount - 1;
+  let i = first;
+  while (i <= last) {
+    const rec = parseRecordLine(document.lineAt(i).text);
+    if (!rec) { i++; continue; }
+    const groupLines = [i];
+    const group = [rec];
+    let j = i + 1;
+    while (j <= last) {
+      const r2 = parseRecordLine(document.lineAt(j).text);
+      if (!r2 || r2.tokens.length !== rec.tokens.length) break;
+      groupLines.push(j);
+      group.push(r2);
+      j++;
+    }
+    if (group.length > 1) {
+      const formatted = formatRecordGroup(group);
+      for (let k = 0; k < group.length; k++) {
+        const lineRange = document.lineAt(groupLines[k]).range;
+        const orig = document.lineAt(groupLines[k]).text;
+        if (formatted[k] !== orig) {
+          edits.push(vscode.TextEdit.replace(lineRange, formatted[k]));
+        }
+      }
+    }
+    i = j;
+  }
+  return edits;
+}
+
+// ---------------------------------------------------------------------------
 // Extension entry point
 // ---------------------------------------------------------------------------
 
@@ -457,7 +560,19 @@ export function activate(context: vscode.ExtensionContext): void {
     await vscode.window.showTextDocument(doc);
   });
 
-  context.subscriptions.push(completionProvider, hoverProvider, copyContextCommand, generateReferenceCommand);
+  const alignColumnsCommand = vscode.commands.registerCommand('opm-flow.alignRecordColumns', async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+    const range = editor.selection.isEmpty ? undefined : editor.selection;
+    const edits = computeAlignEdits(editor.document, range);
+    if (edits.length === 0) {
+      vscode.window.showInformationMessage('OPM Flow: no record groups to align');
+      return;
+    }
+    await editor.edit(b => { for (const e of edits) b.replace(e.range, e.newText); });
+  });
+
+  context.subscriptions.push(completionProvider, hoverProvider, copyContextCommand, generateReferenceCommand, alignColumnsCommand);
 }
 
 export function deactivate(): void {}

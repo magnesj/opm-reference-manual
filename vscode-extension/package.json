@@ -88,12 +88,21 @@
       {
         "command": "opm-flow.generateKeywordReference",
         "title": "OPM Flow: Generate Keyword Reference"
+      },
+      {
+        "command": "opm-flow.alignRecordColumns",
+        "title": "OPM Flow: Align Record Columns"
       }
     ],
     "menus": {
       "editor/context": [
         {
           "command": "opm-flow.copyKeywordContext",
+          "when": "resourceLangId == opm-flow",
+          "group": "opm-flow"
+        },
+        {
+          "command": "opm-flow.alignRecordColumns",
           "when": "resourceLangId == opm-flow",
           "group": "opm-flow"
         }
