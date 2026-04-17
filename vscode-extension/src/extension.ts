@@ -2,13 +2,21 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
+interface Parameter {
+  index: number;
+  name: string;
+  description: string;
+  units: { field?: string; metric?: string; laboratory?: string };
+  default: string;
+}
+
 interface KeywordEntry {
   name: string;
   section: string;
   supported: boolean | null;
   summary: string;
   description: string;
-  parameters: string;
+  parameters: Parameter[];
   example: string;
 }
 
@@ -46,8 +54,21 @@ function buildHoverMarkdown(entry: KeywordEntry): vscode.MarkdownString {
     md.appendMarkdown(`${entry.description}\n\n`);
   }
 
-  if (entry.parameters) {
-    md.appendMarkdown(`**Parameters**\n\n${entry.parameters}\n\n`);
+  if (entry.parameters && entry.parameters.length > 0) {
+    const hasUnits = entry.parameters.some(p => p.units && Object.keys(p.units).length > 0);
+    if (hasUnits) {
+      md.appendMarkdown(`**Parameters**\n\n| No. | Name | Description | Field | Metric | Lab | Default |\n|-----|------|-------------|-------|--------|-----|---------|\n`);
+      for (const p of entry.parameters) {
+        const u = p.units || {};
+        md.appendMarkdown(`| ${p.index} | \`${p.name}\` | ${p.description} | ${u.field ?? ''} | ${u.metric ?? ''} | ${u.laboratory ?? ''} | ${p.default} |\n`);
+      }
+    } else {
+      md.appendMarkdown(`**Parameters**\n\n| No. | Name | Description | Default |\n|-----|------|-------------|----------|\n`);
+      for (const p of entry.parameters) {
+        md.appendMarkdown(`| ${p.index} | \`${p.name}\` | ${p.description} | ${p.default} |\n`);
+      }
+    }
+    md.appendMarkdown('\n');
   }
 
   if (entry.example) {
@@ -127,14 +148,25 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
+      const paramLines: string[] = [];
+      if (entry.parameters && entry.parameters.length > 0) {
+        paramLines.push('\n## Parameters\n');
+        for (const p of entry.parameters) {
+          const unitStr = p.units && Object.keys(p.units).length > 0
+            ? ` (${[p.units.field, p.units.metric, p.units.laboratory].filter(Boolean).join(' / ')})`
+            : '';
+          paramLines.push(`${p.index}. **${p.name}**${unitStr} — default: ${p.default}\n   ${p.description}`);
+        }
+      }
+
       const context = [
         `# OPM Flow keyword: ${entry.name}`,
         `Section: ${entry.section}`,
         entry.supported !== null ? `Supported: ${entry.supported ? 'yes' : 'no'}` : '',
         '',
         entry.description || entry.summary,
-        entry.parameters ? `\n## Parameters\n\n${entry.parameters}` : '',
-        entry.example   ? `\n## Example\n\n\`\`\`\n${entry.example}\n\`\`\`` : '',
+        ...paramLines,
+        entry.example ? `\n## Example\n\n\`\`\`\n${entry.example}\n\`\`\`` : '',
       ].filter(Boolean).join('\n');
 
       await vscode.env.clipboard.writeText(context);

@@ -61,8 +61,25 @@ SUPPORTED_RE       = re.compile(r"(supported|not\s+supported)", re.IGNORECASE)
 # Low-level XML helpers
 # ---------------------------------------------------------------------------
 
+NS_DRAW = "urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+NS_MATH = "http://www.w3.org/1998/Math/MathML"
+_FRAME_TAG  = f"{{{NS_DRAW}}}frame"
+_ANNOT_TAG  = f"{{{NS_MATH}}}annotation"
+
+
+def _formula_text(frame_elem) -> str:
+    """Extract a readable formula string from a draw:frame containing MathML."""
+    annot = frame_elem.find(f".//{_ANNOT_TAG}")
+    if annot is not None and annot.text and annot.text.strip():
+        return f"[{annot.text.strip()}]"
+    return "[formula]"
+
+
 def all_text(element) -> str:
-    """Recursively collect all text content from an element."""
+    """Recursively collect all text content, replacing math frames with annotations."""
+    if element.tag == _FRAME_TAG:
+        tail = element.tail or ""
+        return _formula_text(element) + tail
     parts = []
     if element.text:
         parts.append(element.text)
@@ -85,37 +102,173 @@ def iter_paragraphs(body):
             yield style_name(p), text
 
 
-def extract_table(table_elem) -> list[list[str]]:
-    """Convert a table:table element into a list of row strings."""
+def cell_span(cell_elem) -> int:
+    return int(cell_elem.get(f"{{{NS['table']}}}number-columns-spanned", "1"))
+
+
+def cell_text(cell_elem) -> str:
+    return " ".join(
+        all_text(p).strip()
+        for p in cell_elem.iter(f"{{{NS['text']}}}p")
+    ).strip()
+
+
+def extract_raw_rows(table_elem) -> list[list[tuple[str, int]]]:
+    """
+    Return rows as lists of (text, span) tuples, skipping fully-empty rows.
+    Uses iter() so rows inside table:header-rows are also included.
+    """
     rows = []
     for row in table_elem.iter(f"{{{NS['table']}}}table-row"):
-        cells = []
-        for cell in row.iter(f"{{{NS['table']}}}table-cell"):
-            cell_text = " ".join(
-                all_text(p).strip()
-                for p in cell.iter(f"{{{NS['text']}}}p")
-            ).strip()
-            cells.append(cell_text)
-        # Skip completely empty rows
-        if any(c for c in cells):
+        cells = [
+            (cell_text(c), cell_span(c))
+            for c in row.findall(f"{{{NS['table']}}}table-cell")
+        ]
+        if any(txt for txt, _ in cells):
             rows.append(cells)
     return rows
 
 
-def table_to_markdown(rows: list[list[str]]) -> str:
-    """Render a table as a compact markdown string."""
+def is_param_row(cells: list[tuple[str, int]]) -> bool:
+    """True when the first cell is a bare integer (parameter index)."""
+    return bool(cells) and cells[0][0].strip().isdigit()
+
+
+def is_unit_row(cells: list[tuple[str, int]]) -> bool:
+    """
+    True for the optional row that carries Field/Metric/Laboratory units.
+    These rows have exactly 3 single-span cells and no leading digit.
+    """
+    return (
+        len(cells) == 3
+        and all(span == 1 for _, span in cells)
+        and not cells[0][0].strip().isdigit()
+        and not cells[0][0].strip().lower().startswith("note")
+    )
+
+
+def parse_param_table(table_elem) -> list[dict]:
+    """
+    Parse a keyword parameter table into a list of parameter dicts.
+
+    Each dict has:
+        index       – 1-based integer
+        name        – parameter name string
+        description – full description text
+        units       – {"field": ..., "metric": ..., "laboratory": ...} or {}
+        default     – default value string (may be empty)
+    """
+    raw = extract_raw_rows(table_elem)
+    params = []
+    pending_param = None
+
+    for cells in raw:
+        texts = [t for t, _ in cells]
+
+        # Skip header rows (contain "No.", "Name", "Description", "Field" …)
+        if texts and texts[0] in ("No.", "Field", ""):
+            continue
+
+        if is_param_row(cells):
+            # Flush previous pending param (it had no unit row)
+            if pending_param is not None:
+                params.append(pending_param)
+
+            idx       = int(cells[0][0])
+            name      = cells[1][0] if len(cells) > 1 else ""
+            # description is the cell with span=3 (index 2), default is last
+            desc      = cells[2][0] if len(cells) > 2 else ""
+            default   = cells[3][0] if len(cells) > 3 else ""
+
+            pending_param = {
+                "index":       idx,
+                "name":        name,
+                "description": desc,
+                "units":       {},
+                "default":     default,
+            }
+
+        elif is_unit_row(cells) and pending_param is not None:
+            pending_param["units"] = {
+                "field":       texts[0],
+                "metric":      texts[1],
+                "laboratory":  texts[2],
+            }
+            params.append(pending_param)
+            pending_param = None
+
+        # Notes rows and other non-param rows are ignored
+
+    if pending_param is not None:
+        params.append(pending_param)
+
+    return params
+
+
+def params_to_markdown(params: list[dict]) -> str:
+    """Render structured parameters as a markdown table."""
+    if not params:
+        return ""
+
+    has_units = any(p["units"] for p in params)
+
+    if has_units:
+        header = "| No. | Name | Description | Field | Metric | Laboratory | Default |"
+        sep    = "|-----|------|-------------|-------|--------|------------|---------|"
+        lines  = [header, sep]
+        for p in params:
+            u = p["units"]
+            lines.append(
+                f"| {p['index']} | `{p['name']}` | {p['description']} "
+                f"| {u.get('field','')} | {u.get('metric','')} | {u.get('laboratory','')} "
+                f"| {p['default']} |"
+            )
+    else:
+        header = "| No. | Name | Description | Default |"
+        sep    = "|-----|------|-------------|---------|"
+        lines  = [header, sep]
+        for p in params:
+            lines.append(
+                f"| {p['index']} | `{p['name']}` | {p['description']} | {p['default']} |"
+            )
+
+    return "\n".join(lines)
+
+
+def extract_example_tables(tables) -> list[str]:
+    """Convert non-parameter tables (examples, etc.) to simple markdown."""
+    results = []
+    for tbl in tables:
+        raw = extract_raw_rows(tbl)
+        if not raw:
+            continue
+        # Simple flat rendering for example tables
+        col_count = max(sum(span for _, span in row) for row in raw)
+        flat_rows = []
+        for cells in raw:
+            flat = [txt for txt, _ in cells]
+            flat_rows.append(flat)
+        if flat_rows:
+            results.append(_simple_markdown(flat_rows))
+    return results
+
+
+def _simple_markdown(rows: list[list[str]]) -> str:
     if not rows:
         return ""
+    col_count = max(len(r) for r in rows)
     col_widths = [
-        max(len(str(row[i])) for row in rows if i < len(row))
-        for i in range(max(len(r) for r in rows))
+        max((len(row[i]) if i < len(row) else 0) for row in rows)
+        for i in range(col_count)
     ]
     lines = []
     for idx, row in enumerate(rows):
-        padded = [str(row[i]).ljust(col_widths[i]) if i < len(row) else " " * col_widths[i]
-                  for i in range(len(col_widths))]
+        padded = [
+            (row[i] if i < len(row) else "").ljust(col_widths[i])
+            for i in range(col_count)
+        ]
         lines.append("| " + " | ".join(padded) + " |")
-        if idx == 0:  # header separator
+        if idx == 0:
             lines.append("|" + "|".join("-" * (w + 2) for w in col_widths) + "|")
     return "\n".join(lines)
 
@@ -130,42 +283,49 @@ def parse_keyword_file(fodt_path: Path, section: str) -> dict:
 
     Output schema:
     {
-        "name":          "WELSPECS",
-        "section":       "SCHEDULE",
-        "supported":     true,        # None if unknown
-        "summary":       "First paragraph of description",
-        "description":   "Full description text (paragraphs joined)",
-        "parameters":    "Markdown table of parameters",
-        "examples":      ["example text 1", ...],
-        "full_text":     "All plain text in the document",
-        "source_file":   "parts/chapters/subsections/11.3/WELSPECS.fodt"
+        "name":        "WELSPECS",
+        "section":     "SCHEDULE",
+        "supported":   true,
+        "summary":     "First paragraph of description",
+        "description": "Full description text",
+        "parameters":  [
+            {
+                "index": 1, "name": "WELNAME",
+                "description": "...",
+                "units": {"field": "feet", "metric": "m", "laboratory": "cm"},
+                "default": "None"
+            }, ...
+        ],
+        "examples":    ["example text 1", ...],
+        "full_text":   "All plain text in the document",
+        "source_file": "parts/.../WELSPECS.fodt"
     }
     """
-    keyword_name = fodt_path.stem  # filename without extension
+    keyword_name = fodt_path.stem
 
     try:
-        tree = etree.parse(str(fodt_path))
+        with open(fodt_path, "rb") as f:
+            data = f.read()
+        root = etree.fromstring(data)
     except etree.XMLSyntaxError as e:
         print(f"  WARNING: XML parse error in {fodt_path.name}: {e}", file=sys.stderr)
         return None
 
-    root = tree.getroot()
     body = root.find(f".//{{{NS['office']}}}text")
     if body is None:
         print(f"  WARNING: No office:text in {fodt_path.name}", file=sys.stderr)
         return None
 
-    # --- collect paragraphs and tables in document order ---------------
+    # --- collect paragraphs in document order ---------------------------
     description_parts = []
     example_parts     = []
     all_text_parts    = []
     in_example        = False
-    supported         = None  # tri-state: True / False / None
+    supported         = None
 
     for style, text in iter_paragraphs(body):
         all_text_parts.append(text)
 
-        # Track support status from headings / early paragraphs
         if supported is None:
             m = SUPPORTED_RE.search(text)
             if m:
@@ -173,29 +333,36 @@ def parse_keyword_file(fodt_path: Path, section: str) -> dict:
 
         if style in HEADING_STYLES:
             in_example = bool(EXAMPLE_HEADING_RE.search(text))
-            continue  # headings go into full_text but not description/example
+            continue
 
         if in_example:
             example_parts.append(text)
         else:
             description_parts.append(text)
 
-    # --- extract parameter tables (first table = parameter definition table)
-    param_table_md = ""
-    example_table_md_parts = []
+    # --- parse tables ---------------------------------------------------
+    # Table 0: section-applicability (single row of section names) — skip
+    # Table 1: parameter definition table
+    # Tables 2+: example/other tables
     tables = body.findall(f".//{{{NS['table']}}}table")
 
-    for i, tbl in enumerate(tables):
-        rows = extract_table(tbl)
-        if not rows:
-            continue
-        md = table_to_markdown(rows)
-        if i == 0:
-            param_table_md = md
-        else:
-            example_table_md_parts.append(md)
+    params: list[dict] = []
+    example_table_md_parts: list[str] = []
 
-    # --- assemble summary (first non-trivial paragraph) ----------------
+    for i, tbl in enumerate(tables):
+        raw = extract_raw_rows(tbl)
+        if not raw:
+            continue
+
+        first_row_texts = [t for t, _ in raw[0]]
+
+        # The parameter table starts with "No." in the first cell
+        if "No." in first_row_texts:
+            params = parse_param_table(tbl)
+        elif i > 0:
+            example_table_md_parts.extend(extract_example_tables([tbl]))
+
+    # --- assemble summary ----------------------------------------------
     summary = next(
         (p for p in description_parts if len(p) > 30 and p != keyword_name),
         ""
@@ -207,7 +374,7 @@ def parse_keyword_file(fodt_path: Path, section: str) -> dict:
         "supported":   supported,
         "summary":     summary,
         "description": "\n\n".join(description_parts),
-        "parameters":  param_table_md,
+        "parameters":  params,
         "examples":    example_parts + example_table_md_parts,
         "full_text":   "\n".join(all_text_parts),
         "source_file": str(fodt_path),
@@ -278,8 +445,8 @@ def write_json(index: dict, output_path: Path):
 def write_compact_json(index: dict, output_path: Path):
     """
     Write a compact JSON suitable for bundling in the VS Code extension.
-    Strips full_text and source_file, truncates description to first paragraph,
-    and keeps only the first example.
+    Parameters are stored as structured dicts (not pre-rendered markdown)
+    so the extension can render them however it likes.
     """
     compact = {}
     for name, entry in index.items():
@@ -288,14 +455,14 @@ def write_compact_json(index: dict, output_path: Path):
         desc = entry.get("description", "")
         first_para = desc.split("\n\n")[0][:600] if desc else ""
         examples = entry.get("examples", [])
-        first_example = examples[0][:400] if examples else ""
+        first_example = examples[0][:400] if examples and isinstance(examples[0], str) else ""
         compact[name] = {
             "name":        entry["name"],
             "section":     entry["section"],
             "supported":   entry["supported"],
             "summary":     entry.get("summary", "")[:200],
             "description": first_para,
-            "parameters":  entry.get("parameters", ""),
+            "parameters":  entry.get("parameters", []),
             "example":     first_example,
         }
     with open(output_path, "w", encoding="utf-8") as f:
@@ -314,9 +481,10 @@ def write_summary_tsv(index: dict, output_path: Path):
         for name, entry in sorted(index.items()):
             if isinstance(entry, list):
                 entry = entry[0]  # primary entry for duplicates
-            supported = {True: "yes", False: "no", None: "unknown"}[entry["supported"]]
-            summary   = entry["summary"].replace("\t", " ").replace("\n", " ")[:120]
-            f.write(f"{name}\t{entry['section']}\t{supported}\t{summary}\n")
+            supported  = {True: "yes", False: "no", None: "unknown"}[entry["supported"]]
+            summary    = entry["summary"].replace("\t", " ").replace("\n", " ")[:120]
+            param_count = len(entry["parameters"]) if isinstance(entry["parameters"], list) else 0
+            f.write(f"{name}\t{entry['section']}\t{supported}\t{param_count}\t{summary}\n")
     print(f"Wrote summary TSV: {output_path}")
 
 
