@@ -39,8 +39,8 @@ shows the `GRPNAME` parameter description, units, and default.
 
 ### Docs Panel (Sidebar)
 
-Click the **book icon** in the activity bar to open the **Keyword Reference** panel.
-The panel updates automatically as you move the cursor — no keystrokes needed:
+Open the **Explorer** sidebar (`Ctrl+Shift+E`) and scroll down to the **OPM Keyword Reference** panel.
+It updates automatically as you move the cursor — no keystrokes needed:
 
 - **Cursor on a keyword** → full documentation: description, complete parameter table, example
 - **Cursor on a value column** → same view with the matching parameter row highlighted
@@ -96,7 +96,7 @@ one, via the editor right-click menu:
 ### Quick test
 
 1. Open any `.data` or `.sch` file.
-2. Click the **book icon** in the activity bar — the Keyword Reference panel opens.
+2. Open the Explorer sidebar (`Ctrl+Shift+E`) and scroll down to **OPM Keyword Reference**.
 3. Move the cursor onto a keyword such as `WELSPECS` — the panel shows its full documentation.
 4. Move the cursor to a value in a data record — the panel highlights the matching parameter.
 5. Hover over a keyword or value to see a quick tooltip.
@@ -185,7 +185,7 @@ END
 
 ### 0.3.0
 
-- **Sidebar docs panel**: persistent Keyword Reference panel in the activity bar (book icon)
+- **Sidebar docs panel**: persistent OPM Keyword Reference panel in the Explorer sidebar
   that follows the cursor automatically and highlights the active parameter row
 - **Column hover**: hovering on a value in a data record shows the description for that
   parameter column, including units (Field / Metric / Laboratory) and default value

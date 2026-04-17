@@ -10,25 +10,17 @@
     "Programming Languages"
   ],
   "activationEvents": [
-    "onLanguage:opm-flow"
+    "onLanguage:opm-flow",
+    "onView:opm-flow.docsView"
   ],
   "main": "./out/extension",
   "contributes": {
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "opm-flow-docs",
-          "title": "OPM Flow Docs",
-          "icon": "$(book)"
-        }
-      ]
-    },
     "views": {
-      "opm-flow-docs": [
+      "explorer": [
         {
           "type": "webview",
           "id": "opm-flow.docsView",
-          "name": "Keyword Reference"
+          "name": "OPM Keyword Reference"
         }
       ]
     },
