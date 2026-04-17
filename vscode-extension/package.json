@@ -25,7 +25,15 @@
           ".data",
           ".DATA",
           ".inc",
-          ".INC"
+          ".INC",
+          ".sch",
+          ".SCH",
+          ".grdecl",
+          ".GRDECL",
+          ".vfp",
+          ".VFP",
+          ".prop",
+          ".Ecl"
         ],
         "configuration": "./language-configuration.json"
       }
