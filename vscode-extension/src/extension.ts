@@ -1,72 +1,73 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 
-const OPM_KEYWORDS: string[] = [
-  'ACTION', 'ACTIONG', 'ACTIONR', 'ACTIONS', 'ACTIONW', 'ACTIONX',
-  'AITS', 'AITSOFF', 'APILIM', 'AQUCHGAS', 'AQUCHWAT', 'AQUCT',
-  'AQUCWFAC', 'AQUFETP', 'AQUFLUX', 'BCPROP', 'BOUNDARY', 'BOX',
-  'BRANPROP', 'CALTRAC', 'CECON', 'CECONT', 'COLUMNS', 'COMPDAT',
-  'COMPDATL', 'COMPDATM', 'COMPFLSH', 'COMPIMB', 'COMPINJK',
-  'COMPLMPL', 'COMPLUMP', 'COMPOFF', 'COMPORD', 'COMPRIV', 'COMPRP',
-  'COMPRPL', 'COMPSEGL', 'COMPSEGS', 'COMPTRAJ', 'COMPVE', 'COMPVEL',
-  'CPIFACT', 'CPIFACTL', 'CSKIN', 'DATES', 'DCQDEFN', 'DEBUG',
-  'DELAYACT', 'DIFFMMF', 'DIMPES', 'DIMPLICT', 'DRILPRI', 'DRSDT',
-  'DRSDTCON', 'DRSDTR', 'DRVDT', 'DRVDTR', 'DUMPCUPL', 'DYNAMICR',
-  'ECHO', 'END', 'ENDACTIO', 'ENDBOX', 'ENDDYN', 'ENDFIN', 'ENDINC',
-  'ENDSKIP', 'EPSDBGS', 'EPSDEBUG', 'EXCAVATE', 'EXIT', 'EXTRAPMS',
-  'FBHPDEF', 'FILEUNIT', 'FORMFEED', 'GASBEGIN', 'GASEND', 'GASFCOMP',
-  'GASFDECR', 'GASFDELC', 'GASFTARG', 'GASMONTH', 'GASPERIO', 'GASYEAR',
-  'GCALECON', 'GCONCAL', 'GCONENG', 'GCONINJE', 'GCONPRI', 'GCONPROD',
-  'GCONSALE', 'GCONSUMP', 'GCONTOL', 'GCUTBACK', 'GCUTBACT', 'GDCQ',
-  'GDCQECON', 'GDRILPOT', 'GECON', 'GECONT', 'GEFAC', 'GLIFTLIM',
-  'GLIFTOPT', 'GNETDP', 'GNETINJE', 'GNETPUMP', 'GPMAINT', 'GRADGRUP',
-  'GRADRESV', 'GRADRFT', 'GRADWELL', 'GRDREACH', 'GRUPMAST', 'GRUPNET',
-  'GRUPRIG', 'GRUPSLAV', 'GRUPTARG', 'GRUPTREE', 'GSATINJE', 'GSATPROD',
-  'GSEPCOND', 'GSSCPTST', 'GSWINGF', 'GTADD', 'GTMULT', 'GUIDECAL',
-  'GUIDERAT', 'GUPFREQ', 'GWRTWCV', 'HMWPIMLT', 'INCLUDE', 'LGRFREE',
-  'LGRLOCK', 'LGROFF', 'LGRON', 'LIFTOPT', 'LINCOM', 'MATCORR',
-  'MESSAGE', 'MESSAGES', 'MESSOPTS', 'MULSGGD', 'MULSGGDV', 'MULTFLT',
-  'MULTPV', 'MULTR', 'MULTR-', 'MULTREGT', 'MULTSIG', 'MULTSIGV',
-  'MULTTHT', 'MULTTHT-', 'MULTX', 'MULTX-', 'MULTY', 'MULTY-',
-  'MULTZ', 'MULTZ-', 'NCONSUMP', 'NEFAC', 'NETBALAN', 'NETCOMPA',
-  'NEXT', 'NEXTSTEP', 'NEXTSTPL', 'NODEPROP', 'NOECHO', 'NOHMD',
-  'NOHMO', 'NOSIM', 'NOWARN', 'NUPCOL', 'NWATREM', 'OUTSOL',
-  'PICOND', 'PIMULTAB', 'PLYADS', 'PLYDHFLF', 'PLYMAX', 'PLYROCKM',
-  'PLYSHEAR', 'PLYSHLOG', 'PLYVISC', 'PLYVISCS', 'PLYVISCT', 'PLYVSCST',
-  'PRIORITY', 'PRORDER', 'PYACTION', 'PYEND', 'PYINPUT', 'QDRILL',
-  'RAINFALL', 'RCMASTS', 'REACHES', 'READDATA', 'REFINE', 'RIVDEBUG',
-  'RIVERSYS', 'RIVRPROP', 'RIVSALT', 'RIVTRACE', 'RPTHMG', 'RPTHMW',
-  'RPTONLY', 'RPTONLYO', 'RPTRST', 'RPTSCHED', 'SAVE', 'SCDATAB',
-  'SCDETAB', 'SCDPTAB', 'SCDPTRAC', 'SCHEDULE', 'SEPVALS', 'SHRATE',
-  'SIMULATE', 'SKIP', 'SKIP100', 'SKIP300', 'SKIPREST', 'SLAVES',
-  'SOURCE', 'SUMTHIN', 'SURFVISC', 'SWINGFAC', 'TIGHTEN', 'TIGHTENP',
-  'TIME', 'TSTEP', 'TUNING', 'TUNINGDP', 'TUNINGH', 'TUNINGL',
-  'TUNINGS', 'UDQ', 'UDT', 'USECUPL', 'VAPPARS', 'VFPCHK', 'VFPINJ',
-  'VFPPROD', 'VFPTABL', 'WAITBAL', 'WALKALIN', 'WALQCALC', 'WAPI',
-  'WARN', 'WBHGLR', 'WBOREVOL', 'WCALCVAL', 'WCONHIST', 'WCONINJ',
-  'WCONINJE', 'WCONINJH', 'WCONINJP', 'WCONPROD', 'WCUTBACK',
-  'WCUTBACT', 'WCYCLE', 'WDFAC', 'WDFACCOR', 'WDRILPRI', 'WDRILRES',
-  'WDRILTIM', 'WECON', 'WECONINJ', 'WECONT', 'WEFAC', 'WELCNTL',
-  'WELDEBUG', 'WELDRAW', 'WELEVNT', 'WELLSTRE', 'WELMOVEL', 'WELOPEN',
-  'WELOPENL', 'WELPI', 'WELPRI', 'WELSEGS', 'WELSOMIN', 'WELSPECL',
-  'WELSPECS', 'WELTARG', 'WELTRAJ', 'WFOAM', 'WFRICSEG', 'WFRICSGL',
-  'WFRICTN', 'WFRICTNL', 'WGASPROD', 'WGORPEN', 'WGRUPCON', 'WHEDREFD',
-  'WHISTCTL', 'WHTEMP', 'WINJCLN', 'WINJDAM', 'WINJFCNC', 'WINJGAS',
-  'WINJMULT', 'WINJTEMP', 'WLIFT', 'WLIFTOPT', 'WLIMTOL', 'WLIST',
-  'WLISTARG', 'WLISTNAM', 'WMICP', 'WNETCTRL', 'WNETDP', 'WORKLIM',
-  'WORKTHP', 'WPAVE', 'WPAVEDEP', 'WPIMULT', 'WPIMULTL', 'WPITAB',
-  'WPLUG', 'WPMITAB', 'WPOLYMER', 'WPOLYRED', 'WREGROUP', 'WRFT',
-  'WRFTPLT', 'WSALT', 'WSCCLEAN', 'WSCCLENL', 'WSCTAB', 'WSEGAICD',
-  'WSEGDFIN', 'WSEGDFMD', 'WSEGDFPA', 'WSEGEXSS', 'WSEGFLIM',
-  'WSEGFMOD', 'WSEGINIT', 'WSEGITER', 'WSEGLABY', 'WSEGLINK',
-  'WSEGMULT', 'WSEGPROP', 'WSEGPULL', 'WSEGSEP', 'WSEGSICD',
-  'WSEGSOLV', 'WSEGTABL', 'WSEGVALV', 'WSKPTAB', 'WSOLVENT',
-  'WSURFACT', 'WTADD', 'WTEMP', 'WTEMPQ', 'WTEST', 'WTHPMAX',
-  'WTMULT', 'WTRACER', 'WVFPDP', 'WVFPEXP', 'WWPAVE', 'ZIPP2OFF',
-  'ZIPPY2',
-];
+interface KeywordEntry {
+  name: string;
+  section: string;
+  supported: boolean | null;
+  summary: string;
+  description: string;
+  parameters: string;
+  example: string;
+}
+
+type KeywordIndex = Record<string, KeywordEntry>;
+
+function loadKeywordIndex(context: vscode.ExtensionContext): KeywordIndex {
+  const indexPath = path.join(context.extensionPath, 'data', 'keyword_index_compact.json');
+  try {
+    const raw = fs.readFileSync(indexPath, 'utf-8');
+    return JSON.parse(raw) as KeywordIndex;
+  } catch (e) {
+    console.error('OPM Flow: failed to load keyword index', e);
+    return {};
+  }
+}
+
+function buildHoverMarkdown(entry: KeywordEntry): vscode.MarkdownString {
+  const md = new vscode.MarkdownString();
+  md.isTrusted = true;
+  md.supportHtml = false;
+
+  const supportLabel =
+    entry.supported === true  ? '✅ Supported' :
+    entry.supported === false ? '❌ Not supported' :
+                                '❓ Support unknown';
+
+  md.appendMarkdown(`## \`${entry.name}\` — ${entry.section}\n\n`);
+  md.appendMarkdown(`*${supportLabel}*\n\n`);
+
+  if (entry.summary) {
+    md.appendMarkdown(`${entry.summary}\n\n`);
+  }
+
+  if (entry.description && entry.description !== entry.summary) {
+    md.appendMarkdown(`${entry.description}\n\n`);
+  }
+
+  if (entry.parameters) {
+    md.appendMarkdown(`**Parameters**\n\n${entry.parameters}\n\n`);
+  }
+
+  if (entry.example) {
+    md.appendMarkdown(`**Example**\n\`\`\`\n${entry.example}\n\`\`\`\n`);
+  }
+
+  return md;
+}
+
+function wordAtPosition(document: vscode.TextDocument, position: vscode.Position): string {
+  const range = document.getWordRangeAtPosition(position, /[A-Z][A-Z0-9_-]*/);
+  return range ? document.getText(range) : '';
+}
 
 export function activate(context: vscode.ExtensionContext): void {
-  const provider = vscode.languages.registerCompletionItemProvider(
+  const index = loadKeywordIndex(context);
+  const keywords = Object.keys(index);
+
+  // --- Completion provider ---
+  const completionProvider = vscode.languages.registerCompletionItemProvider(
     'opm-flow',
     {
       provideCompletionItems(
@@ -74,24 +75,113 @@ export function activate(context: vscode.ExtensionContext): void {
         position: vscode.Position
       ): vscode.CompletionItem[] {
         const linePrefix = document.lineAt(position).text.substring(0, position.character);
-
-        // Only provide completions at the start of a line (ignoring leading whitespace)
-        if (!/^\s*[A-Z]*$/.test(linePrefix)) {
+        if (!/^\s*[A-Z][A-Z0-9_-]*$/.test(linePrefix)) {
           return [];
         }
 
-        return OPM_KEYWORDS.map((keyword) => {
-          const item = new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword);
-          item.detail = 'OPM Flow keyword';
+        return keywords.map((kw) => {
+          const entry = index[kw];
+          const item = new vscode.CompletionItem(kw, vscode.CompletionItemKind.Keyword);
+          item.detail = `[${entry.section}] ${entry.supported === false ? '(not supported) ' : ''}OPM Flow`;
+          if (entry.summary) {
+            const doc = new vscode.MarkdownString(entry.summary);
+            item.documentation = doc;
+          }
           return item;
         });
       },
     },
-    // Trigger on uppercase letters at line start
     ...('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''))
   );
 
-  context.subscriptions.push(provider);
+  // --- Hover provider ---
+  const hoverProvider = vscode.languages.registerHoverProvider('opm-flow', {
+    provideHover(
+      document: vscode.TextDocument,
+      position: vscode.Position
+    ): vscode.Hover | undefined {
+      const word = wordAtPosition(document, position);
+      if (!word) return undefined;
+
+      const entry = index[word];
+      if (!entry) return undefined;
+
+      return new vscode.Hover(buildHoverMarkdown(entry));
+    },
+  });
+
+  // --- Command: copy AI context for current keyword ---
+  const copyContextCommand = vscode.commands.registerCommand(
+    'opm-flow.copyKeywordContext',
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+
+      const word = wordAtPosition(editor.document, editor.selection.active);
+      const entry = word ? index[word] : undefined;
+
+      if (!entry) {
+        vscode.window.showInformationMessage(
+          word ? `No documentation found for "${word}"` : 'Place cursor on a keyword first'
+        );
+        return;
+      }
+
+      const context = [
+        `# OPM Flow keyword: ${entry.name}`,
+        `Section: ${entry.section}`,
+        entry.supported !== null ? `Supported: ${entry.supported ? 'yes' : 'no'}` : '',
+        '',
+        entry.description || entry.summary,
+        entry.parameters ? `\n## Parameters\n\n${entry.parameters}` : '',
+        entry.example   ? `\n## Example\n\n\`\`\`\n${entry.example}\n\`\`\`` : '',
+      ].filter(Boolean).join('\n');
+
+      await vscode.env.clipboard.writeText(context);
+      vscode.window.showInformationMessage(`Copied context for ${entry.name} to clipboard`);
+    }
+  );
+
+  // --- Command: generate full keyword reference as markdown ---
+  const generateReferenceCommand = vscode.commands.registerCommand(
+    'opm-flow.generateKeywordReference',
+    async () => {
+      const sections = ['RUNSPEC', 'GRID', 'EDIT', 'PROPS', 'REGIONS', 'SOLUTION', 'SUMMARY', 'SCHEDULE', 'OPTIMIZE'];
+      const bySection: Record<string, KeywordEntry[]> = {};
+
+      for (const entry of Object.values(index)) {
+        const sec = entry.section;
+        if (!bySection[sec]) bySection[sec] = [];
+        bySection[sec].push(entry);
+      }
+
+      const lines: string[] = ['# OPM Flow Keyword Reference\n'];
+      for (const sec of sections) {
+        const entries = bySection[sec];
+        if (!entries) continue;
+        lines.push(`## ${sec}\n`);
+        for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+          lines.push(`### \`${e.name}\``);
+          if (e.summary) lines.push(e.summary);
+          if (e.parameters) lines.push(`\n**Parameters**\n\n${e.parameters}`);
+          lines.push('');
+        }
+      }
+
+      const doc = await vscode.workspace.openTextDocument({
+        content: lines.join('\n'),
+        language: 'markdown',
+      });
+      await vscode.window.showTextDocument(doc);
+    }
+  );
+
+  context.subscriptions.push(
+    completionProvider,
+    hoverProvider,
+    copyContextCommand,
+    generateReferenceCommand
+  );
 }
 
 export function deactivate(): void {}

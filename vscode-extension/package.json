@@ -2,7 +2,7 @@
   "name": "opm-flow",
   "displayName": "OPM Flow",
   "description": "Language support for OPM Flow reservoir simulation deck files",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -36,12 +36,32 @@
         "scopeName": "source.opm-flow",
         "path": "./syntaxes/opm-flow.tmLanguage.json"
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "opm-flow.copyKeywordContext",
+        "title": "OPM Flow: Copy Keyword Context for AI"
+      },
+      {
+        "command": "opm-flow.generateKeywordReference",
+        "title": "OPM Flow: Generate Keyword Reference"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "opm-flow.copyKeywordContext",
+          "when": "resourceLangId == opm-flow",
+          "group": "opm-flow"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "build-index": "python ../scripts/build_keyword_index.py --manual-dir .. --output data/keyword_index.json --compact data/keyword_index_compact.json"
   },
   "devDependencies": {
     "@types/vscode": "^1.74.0",
