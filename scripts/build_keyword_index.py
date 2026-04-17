@@ -94,12 +94,22 @@ def style_name(element) -> str:
     return element.get(f"{{{NS['text']}}}style-name", "")
 
 
+_P_TAG = f"{{{NS['text']}}}p"
+_H_TAG = f"{{{NS['text']}}}h"
+
+
 def iter_paragraphs(body):
-    """Yield (style, text) for every text:p in document order."""
-    for p in body.iter(f"{{{NS['text']}}}p"):
-        text = all_text(p).strip()
-        if text:
-            yield style_name(p), text
+    """Yield (is_heading, style, text) for every text:p and text:h in document order.
+
+    text:h elements are headings regardless of their style-name (the OPM manual
+    uses auto-generated style names like "P97" for headings, so the tag itself
+    is the reliable signal).
+    """
+    for elem in body.iter(_P_TAG, _H_TAG):
+        text = all_text(elem).strip()
+        if not text:
+            continue
+        yield elem.tag == _H_TAG, style_name(elem), text
 
 
 def cell_span(cell_elem) -> int:
@@ -323,7 +333,7 @@ def parse_keyword_file(fodt_path: Path, section: str) -> dict:
     in_example        = False
     supported         = None
 
-    for style, text in iter_paragraphs(body):
+    for is_heading, style, text in iter_paragraphs(body):
         all_text_parts.append(text)
 
         if supported is None:
@@ -331,7 +341,7 @@ def parse_keyword_file(fodt_path: Path, section: str) -> dict:
             if m:
                 supported = "not" not in m.group(0).lower()
 
-        if style in HEADING_STYLES:
+        if is_heading or style in HEADING_STYLES:
             in_example = bool(EXAMPLE_HEADING_RE.search(text))
             continue
 
@@ -455,7 +465,7 @@ def write_compact_json(index: dict, output_path: Path):
         desc = entry.get("description", "")
         first_para = desc.split("\n\n")[0][:600] if desc else ""
         examples = entry.get("examples", [])
-        first_example = examples[0][:400] if examples and isinstance(examples[0], str) else ""
+        example_text = "\n".join(e for e in examples if isinstance(e, str))[:4000]
         compact[name] = {
             "name":        entry["name"],
             "section":     entry["section"],
@@ -463,7 +473,7 @@ def write_compact_json(index: dict, output_path: Path):
             "summary":     entry.get("summary", "")[:200],
             "description": first_para,
             "parameters":  entry.get("parameters", []),
-            "example":     first_example,
+            "example":     example_text,
         }
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(compact, f, separators=(",", ":"), ensure_ascii=False)
