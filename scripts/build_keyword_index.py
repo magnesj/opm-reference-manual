@@ -477,7 +477,7 @@ def write_summary_tsv(index: dict, output_path: Path):
     Useful for quick loading in the LSP server without parsing full JSON.
     """
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write("keyword\tsection\tsupported\tsummary\n")
+        f.write("keyword\tsection\tsupported\tparam_count\tsummary\n")
         for name, entry in sorted(index.items()):
             if isinstance(entry, list):
                 entry = entry[0]  # primary entry for duplicates

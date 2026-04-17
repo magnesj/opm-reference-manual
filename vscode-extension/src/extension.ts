@@ -93,10 +93,11 @@ function columnAtCursor(line: string, cursorChar: number): number {
 // Backward keyword scanner
 // ---------------------------------------------------------------------------
 
-const KEYWORD_LINE_RE = /^\s*([A-Z][A-Z0-9_-]{1,})\s*(?:--|\/\s*(?:--|$)|$)/;
+const KEYWORD_LINE_RE = /^\s*([A-Z][A-Z0-9_+-]{1,})\s*(?:--|\/\s*(?:--|$)|$)/;
 
 function findActiveKeyword(document: vscode.TextDocument, position: vscode.Position): string | null {
-  for (let lineNum = position.line; lineNum >= 0; lineNum--) {
+  const scanLimit = Math.max(0, position.line - 200);
+  for (let lineNum = position.line; lineNum >= scanLimit; lineNum--) {
     const text = document.lineAt(lineNum).text;
     if (text.trim().startsWith('--')) continue;
     const m = text.match(KEYWORD_LINE_RE);
@@ -137,8 +138,8 @@ function buildDocsHtml(entry: KeywordEntry | null, highlightParam: Parameter | n
       background: var(--vscode-badge-background);
       color: var(--vscode-badge-foreground);
     }
-    .badge.ok   { background: #2d6a2d; color: #c8f0c8; }
-    .badge.fail { background: #6a2d2d; color: #f0c8c8; }
+    .badge.ok   { background: var(--vscode-testing-iconPassed, #2d6a2d); color: var(--vscode-foreground); }
+    .badge.fail { background: var(--vscode-testing-iconFailed, #6a2d2d); color: var(--vscode-foreground); }
     p { margin: 4px 0 8px 0; }
     table { border-collapse: collapse; width: 100%; font-size: 0.9em; margin-bottom: 8px; }
     th {
