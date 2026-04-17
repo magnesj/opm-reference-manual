@@ -23,15 +23,31 @@ Each completion item shows the deck section (`RUNSPEC`, `GRID`, `SCHEDULE`, etc.
 a one-line description in the documentation pane. Completions are triggered when typing
 uppercase letters at the start of a line.
 
-### Hover Documentation
+### Hover Tooltips
 
-Hover over any keyword to see:
+Hover over any keyword to see a quick tooltip with:
 
 - Which deck **section** it belongs to
 - Whether it is **supported** in OPM Flow
 - A **description** from the reference manual
-- A **parameter table** listing all record fields
+- A **parameter table** listing all record fields with units and defaults
 - A usage **example**
+
+Hovering over a **value in a data record** shows the description for that specific
+parameter column. For example, hovering over the group name in a `WELSPECS` record
+shows the `GRPNAME` parameter description, units, and default.
+
+### Docs Panel (Sidebar)
+
+Click the **book icon** in the activity bar to open the **Keyword Reference** panel.
+The panel updates automatically as you move the cursor — no keystrokes needed:
+
+- **Cursor on a keyword** → full documentation: description, complete parameter table, example
+- **Cursor on a value column** → same view with the matching parameter row highlighted
+- **Cursor on whitespace or a comment** → panel retains the last shown keyword
+
+This is the main view for reading long keyword documentation, since it scrolls freely
+and stays visible while you edit.
 
 ### AI Context Commands
 
@@ -47,10 +63,13 @@ one, via the editor right-click menu:
 
 | Extension | Description |
 |-----------|-------------|
-| `.data`   | Main simulation deck files |
-| `.DATA`   | Main simulation deck files (uppercase) |
-| `.inc`    | Include files |
-| `.INC`    | Include files (uppercase) |
+| `.data` / `.DATA` | Main simulation deck files |
+| `.inc` / `.INC` | Include files |
+| `.sch` / `.SCH` | Schedule files |
+| `.grdecl` / `.GRDECL` | Grid declaration files |
+| `.vfp` / `.VFP` | VFP table files |
+| `.prop` | Property files |
+| `.Ecl` | Eclipse-format files |
 
 ## Installation in VS Code
 
@@ -64,8 +83,7 @@ one, via the editor right-click menu:
    ```
 
 2. **Open the extension folder in VS Code**, then press **F5** to launch an Extension
-   Development Host. OPM Flow syntax highlighting and all features will be active for
-   any `.data` or `.inc` file you open in that window.
+   Development Host. All features will be active for any supported file you open.
 
 3. **To install permanently** without publishing, package the extension and install it:
    ```bash
@@ -77,8 +95,11 @@ one, via the editor right-click menu:
 
 ### Quick test
 
-Open any `.data` file, hover over a keyword such as `WELSPECS` and you should see the
-reference manual documentation in a tooltip.
+1. Open any `.data` or `.sch` file.
+2. Click the **book icon** in the activity bar — the Keyword Reference panel opens.
+3. Move the cursor onto a keyword such as `WELSPECS` — the panel shows its full documentation.
+4. Move the cursor to a value in a data record — the panel highlights the matching parameter.
+5. Hover over a keyword or value to see a quick tooltip.
 
 To use the AI context feature:
 
@@ -122,7 +143,7 @@ This reads every `.fodt` file under `parts/chapters/subsections/` and produces:
 | File | Size | Purpose |
 |------|------|---------|
 | `data/keyword_index.json` | ~22 MB | Full index with complete descriptions — not committed, not bundled |
-| `data/keyword_index_compact.json` | ~800 KB | Compact index bundled in the extension |
+| `data/keyword_index_compact.json` | ~1 MB | Compact index bundled in the extension |
 
 After regenerating, recompile the extension (`npm run compile`) and commit
 `data/keyword_index_compact.json`.
@@ -161,6 +182,16 @@ END
 ```
 
 ## Release Notes
+
+### 0.3.0
+
+- **Sidebar docs panel**: persistent Keyword Reference panel in the activity bar (book icon)
+  that follows the cursor automatically and highlights the active parameter row
+- **Column hover**: hovering on a value in a data record shows the description for that
+  parameter column, including units (Field / Metric / Laboratory) and default value
+- Structured parameter extraction from reference manual tables (name, description, units, default)
+- MathML formula annotations preserved in descriptions instead of binary garbage
+- Additional file extensions: `.sch`, `.SCH`, `.grdecl`, `.GRDECL`, `.vfp`, `.VFP`, `.prop`, `.Ecl`
 
 ### 0.2.0
 
