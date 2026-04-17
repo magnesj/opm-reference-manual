@@ -1,0 +1,97 @@
+import * as vscode from 'vscode';
+
+const OPM_KEYWORDS: string[] = [
+  'ACTION', 'ACTIONG', 'ACTIONR', 'ACTIONS', 'ACTIONW', 'ACTIONX',
+  'AITS', 'AITSOFF', 'APILIM', 'AQUCHGAS', 'AQUCHWAT', 'AQUCT',
+  'AQUCWFAC', 'AQUFETP', 'AQUFLUX', 'BCPROP', 'BOUNDARY', 'BOX',
+  'BRANPROP', 'CALTRAC', 'CECON', 'CECONT', 'COLUMNS', 'COMPDAT',
+  'COMPDATL', 'COMPDATM', 'COMPFLSH', 'COMPIMB', 'COMPINJK',
+  'COMPLMPL', 'COMPLUMP', 'COMPOFF', 'COMPORD', 'COMPRIV', 'COMPRP',
+  'COMPRPL', 'COMPSEGL', 'COMPSEGS', 'COMPTRAJ', 'COMPVE', 'COMPVEL',
+  'CPIFACT', 'CPIFACTL', 'CSKIN', 'DATES', 'DCQDEFN', 'DEBUG',
+  'DELAYACT', 'DIFFMMF', 'DIMPES', 'DIMPLICT', 'DRILPRI', 'DRSDT',
+  'DRSDTCON', 'DRSDTR', 'DRVDT', 'DRVDTR', 'DUMPCUPL', 'DYNAMICR',
+  'ECHO', 'END', 'ENDACTIO', 'ENDBOX', 'ENDDYN', 'ENDFIN', 'ENDINC',
+  'ENDSKIP', 'EPSDBGS', 'EPSDEBUG', 'EXCAVATE', 'EXIT', 'EXTRAPMS',
+  'FBHPDEF', 'FILEUNIT', 'FORMFEED', 'GASBEGIN', 'GASEND', 'GASFCOMP',
+  'GASFDECR', 'GASFDELC', 'GASFTARG', 'GASMONTH', 'GASPERIO', 'GASYEAR',
+  'GCALECON', 'GCONCAL', 'GCONENG', 'GCONINJE', 'GCONPRI', 'GCONPROD',
+  'GCONSALE', 'GCONSUMP', 'GCONTOL', 'GCUTBACK', 'GCUTBACT', 'GDCQ',
+  'GDCQECON', 'GDRILPOT', 'GECON', 'GECONT', 'GEFAC', 'GLIFTLIM',
+  'GLIFTOPT', 'GNETDP', 'GNETINJE', 'GNETPUMP', 'GPMAINT', 'GRADGRUP',
+  'GRADRESV', 'GRADRFT', 'GRADWELL', 'GRDREACH', 'GRUPMAST', 'GRUPNET',
+  'GRUPRIG', 'GRUPSLAV', 'GRUPTARG', 'GRUPTREE', 'GSATINJE', 'GSATPROD',
+  'GSEPCOND', 'GSSCPTST', 'GSWINGF', 'GTADD', 'GTMULT', 'GUIDECAL',
+  'GUIDERAT', 'GUPFREQ', 'GWRTWCV', 'HMWPIMLT', 'INCLUDE', 'LGRFREE',
+  'LGRLOCK', 'LGROFF', 'LGRON', 'LIFTOPT', 'LINCOM', 'MATCORR',
+  'MESSAGE', 'MESSAGES', 'MESSOPTS', 'MULSGGD', 'MULSGGDV', 'MULTFLT',
+  'MULTPV', 'MULTR', 'MULTR-', 'MULTREGT', 'MULTSIG', 'MULTSIGV',
+  'MULTTHT', 'MULTTHT-', 'MULTX', 'MULTX-', 'MULTY', 'MULTY-',
+  'MULTZ', 'MULTZ-', 'NCONSUMP', 'NEFAC', 'NETBALAN', 'NETCOMPA',
+  'NEXT', 'NEXTSTEP', 'NEXTSTPL', 'NODEPROP', 'NOECHO', 'NOHMD',
+  'NOHMO', 'NOSIM', 'NOWARN', 'NUPCOL', 'NWATREM', 'OUTSOL',
+  'PICOND', 'PIMULTAB', 'PLYADS', 'PLYDHFLF', 'PLYMAX', 'PLYROCKM',
+  'PLYSHEAR', 'PLYSHLOG', 'PLYVISC', 'PLYVISCS', 'PLYVISCT', 'PLYVSCST',
+  'PRIORITY', 'PRORDER', 'PYACTION', 'PYEND', 'PYINPUT', 'QDRILL',
+  'RAINFALL', 'RCMASTS', 'REACHES', 'READDATA', 'REFINE', 'RIVDEBUG',
+  'RIVERSYS', 'RIVRPROP', 'RIVSALT', 'RIVTRACE', 'RPTHMG', 'RPTHMW',
+  'RPTONLY', 'RPTONLYO', 'RPTRST', 'RPTSCHED', 'SAVE', 'SCDATAB',
+  'SCDETAB', 'SCDPTAB', 'SCDPTRAC', 'SCHEDULE', 'SEPVALS', 'SHRATE',
+  'SIMULATE', 'SKIP', 'SKIP100', 'SKIP300', 'SKIPREST', 'SLAVES',
+  'SOURCE', 'SUMTHIN', 'SURFVISC', 'SWINGFAC', 'TIGHTEN', 'TIGHTENP',
+  'TIME', 'TSTEP', 'TUNING', 'TUNINGDP', 'TUNINGH', 'TUNINGL',
+  'TUNINGS', 'UDQ', 'UDT', 'USECUPL', 'VAPPARS', 'VFPCHK', 'VFPINJ',
+  'VFPPROD', 'VFPTABL', 'WAITBAL', 'WALKALIN', 'WALQCALC', 'WAPI',
+  'WARN', 'WBHGLR', 'WBOREVOL', 'WCALCVAL', 'WCONHIST', 'WCONINJ',
+  'WCONINJE', 'WCONINJH', 'WCONINJP', 'WCONPROD', 'WCUTBACK',
+  'WCUTBACT', 'WCYCLE', 'WDFAC', 'WDFACCOR', 'WDRILPRI', 'WDRILRES',
+  'WDRILTIM', 'WECON', 'WECONINJ', 'WECONT', 'WEFAC', 'WELCNTL',
+  'WELDEBUG', 'WELDRAW', 'WELEVNT', 'WELLSTRE', 'WELMOVEL', 'WELOPEN',
+  'WELOPENL', 'WELPI', 'WELPRI', 'WELSEGS', 'WELSOMIN', 'WELSPECL',
+  'WELSPECS', 'WELTARG', 'WELTRAJ', 'WFOAM', 'WFRICSEG', 'WFRICSGL',
+  'WFRICTN', 'WFRICTNL', 'WGASPROD', 'WGORPEN', 'WGRUPCON', 'WHEDREFD',
+  'WHISTCTL', 'WHTEMP', 'WINJCLN', 'WINJDAM', 'WINJFCNC', 'WINJGAS',
+  'WINJMULT', 'WINJTEMP', 'WLIFT', 'WLIFTOPT', 'WLIMTOL', 'WLIST',
+  'WLISTARG', 'WLISTNAM', 'WMICP', 'WNETCTRL', 'WNETDP', 'WORKLIM',
+  'WORKTHP', 'WPAVE', 'WPAVEDEP', 'WPIMULT', 'WPIMULTL', 'WPITAB',
+  'WPLUG', 'WPMITAB', 'WPOLYMER', 'WPOLYRED', 'WREGROUP', 'WRFT',
+  'WRFTPLT', 'WSALT', 'WSCCLEAN', 'WSCCLENL', 'WSCTAB', 'WSEGAICD',
+  'WSEGDFIN', 'WSEGDFMD', 'WSEGDFPA', 'WSEGEXSS', 'WSEGFLIM',
+  'WSEGFMOD', 'WSEGINIT', 'WSEGITER', 'WSEGLABY', 'WSEGLINK',
+  'WSEGMULT', 'WSEGPROP', 'WSEGPULL', 'WSEGSEP', 'WSEGSICD',
+  'WSEGSOLV', 'WSEGTABL', 'WSEGVALV', 'WSKPTAB', 'WSOLVENT',
+  'WSURFACT', 'WTADD', 'WTEMP', 'WTEMPQ', 'WTEST', 'WTHPMAX',
+  'WTMULT', 'WTRACER', 'WVFPDP', 'WVFPEXP', 'WWPAVE', 'ZIPP2OFF',
+  'ZIPPY2',
+];
+
+export function activate(context: vscode.ExtensionContext): void {
+  const provider = vscode.languages.registerCompletionItemProvider(
+    'opm-flow',
+    {
+      provideCompletionItems(
+        document: vscode.TextDocument,
+        position: vscode.Position
+      ): vscode.CompletionItem[] {
+        const linePrefix = document.lineAt(position).text.substring(0, position.character);
+
+        // Only provide completions at the start of a line (ignoring leading whitespace)
+        if (!/^\s*[A-Z]*$/.test(linePrefix)) {
+          return [];
+        }
+
+        return OPM_KEYWORDS.map((keyword) => {
+          const item = new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword);
+          item.detail = 'OPM Flow keyword';
+          return item;
+        });
+      },
+    },
+    // Trigger on uppercase letters at line start
+    ...('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''))
+  );
+
+  context.subscriptions.push(provider);
+}
+
+export function deactivate(): void {}

@@ -1,0 +1,51 @@
+{
+  "name": "opm-flow",
+  "displayName": "OPM Flow",
+  "description": "Language support for OPM Flow reservoir simulation deck files",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:opm-flow"
+  ],
+  "main": "./out/extension",
+  "contributes": {
+    "languages": [
+      {
+        "id": "opm-flow",
+        "aliases": [
+          "OPM Flow",
+          "reservoir-simulation"
+        ],
+        "extensions": [
+          ".data",
+          ".DATA",
+          ".inc",
+          ".INC"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "opm-flow",
+        "scopeName": "source.opm-flow",
+        "path": "./syntaxes/opm-flow.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "18.x",
+    "typescript": "^5.0.0"
+  }
+}

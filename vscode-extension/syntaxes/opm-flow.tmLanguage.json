@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "OPM Flow",
+  "scopeName": "source.opm-flow",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#end-keyword" },
+    { "include": "#keywords" },
+    { "include": "#terminators" },
+    { "include": "#strings" },
+    { "include": "#numbers" }
+  ],
+  "repository": {
+    "comments": {
+      "name": "comment.line.double-dash.opm-flow",
+      "match": "--.*$"
+    },
+    "end-keyword": {
+      "name": "keyword.control.end.opm-flow",
+      "match": "^\\s*END\\s*$"
+    },
+    "keywords": {
+      "name": "keyword.control.opm-flow",
+      "match": "^\\s*[A-Z][A-Z0-9_+-]*\\s*$|^\\s*[A-Z][A-Z0-9_+-]*(?=\\s)"
+    },
+    "terminators": {
+      "name": "punctuation.terminator.opm-flow",
+      "match": "^\\s*/\\s*$|(?<=\\S)\\s*/"
+    },
+    "strings": {
+      "name": "string.quoted.single.opm-flow",
+      "begin": "'",
+      "end": "'",
+      "patterns": []
+    },
+    "numbers": {
+      "name": "constant.numeric.opm-flow",
+      "match": "(?<![A-Za-z_])[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?(?![A-Za-z_])"
+    }
+  }
+}
