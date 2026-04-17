@@ -9,11 +9,14 @@ with AI-assisted development features backed by the full OPM Flow reference manu
 
 Provides syntax highlighting for OPM Flow simulation deck files with support for:
 
-- **Keywords**: ALL_CAPS identifiers (e.g., `COMPDAT`, `WELSPECS`, `DATES`, `SCHEDULE`)
+- **Section headers**: `RUNSPEC`, `GRID`, `EDIT`, `PROPS`, `REGIONS`, `SOLUTION`, `SUMMARY`, `SCHEDULE`, `OPTIMIZE` — scoped so most themes render them in a distinct color (yellow in Dark+)
+- **Keywords**: ALL_CAPS identifiers (e.g., `COMPDAT`, `WELSPECS`, `DATES`)
 - **Comments**: Lines starting with `--`
-- **Section terminators**: Standalone `/` on a line
+- **Record terminators**: `/` marking the end of a record
 - **Numbers**: Integers and floating-point values
+- **Defaults / repeat markers**: `1*`, `3*`, etc. (distinct from ordinary numbers)
 - **Strings**: Text in single quotes
+- **Template variables**: `<NAME>` placeholders used in macro/ERT workflows
 - **END keyword**: Specially highlighted file terminator
 
 ### Keyword Autocompletion
@@ -49,6 +52,36 @@ It updates automatically as you move the cursor — no keystrokes needed:
 This is the main view for reading long keyword documentation, since it scrolls freely
 and stays visible while you edit.
 
+### Align Record Columns
+
+Tidy up record blocks so every column lines up. Invoke **OPM Flow: Align Record Columns**
+from the Command Palette or the editor right-click menu. With a selection it aligns only
+the selected lines; without one it aligns the whole document.
+
+Groups of consecutive record lines (same token count) are reformatted in place:
+strings left-aligned, numerics (including `N*` repeat markers) right-aligned. Keyword
+headers, comment lines, the closing `/`, and trailing `-- comments` are left untouched.
+
+Before:
+```
+MULTIPLY
+ 'PERMZ' 0.2 1 24 1 62 1 1 /
+ 'PERMZ' 0.04 1 24 1 62 2 2 /
+ 'PERMZ' 0.016 1 24 1 62 18 18 /
+ 'PERMZ' 1 1 24 1 62 22 22 /
+/
+```
+
+After:
+```
+MULTIPLY
+ 'PERMZ'   0.2 1 24 1 62  1  1 /
+ 'PERMZ'  0.04 1 24 1 62  2  2 /
+ 'PERMZ' 0.016 1 24 1 62 18 18 /
+ 'PERMZ'     1 1 24 1 62 22 22 /
+/
+```
+
 ### AI Context Commands
 
 Two commands are available from the Command Palette (`Ctrl+Shift+P`) and, for the first
@@ -61,15 +94,16 @@ one, via the editor right-click menu:
 
 ## Supported File Extensions
 
-| Extension | Description |
-|-----------|-------------|
-| `.data` / `.DATA` | Main simulation deck files |
-| `.inc` / `.INC` | Include files |
-| `.sch` / `.SCH` | Schedule files |
-| `.grdecl` / `.GRDECL` | Grid declaration files |
-| `.vfp` / `.VFP` | VFP table files |
-| `.prop` | Property files |
-| `.Ecl` | Eclipse-format files |
+The extension activates for the following extensions (case-sensitive on some platforms —
+both common casings are registered where relevant):
+
+Core deck files: `.data`, `.DATA`, `.inc`, `.INC`, `.include`, `.sch`, `.SCH`,
+`.schedule`, `.summary`, `.grdecl`, `.GRDECL`, `.vfp`, `.VFP`, `.prop`, `.Ecl`, `.ecl`.
+
+Section data files (Eclipse/OPM include conventions): `.aqucon`, `.aqunum`, `.dimens`,
+`.eqlnum`, `.equil`, `.fault`, `.fipnum`, `.multnum`, `.multregp`, `.multregt`, `.nnc`,
+`.ntg`, `.opernum`, `.perm`, `.poro`, `.pvt`, `.rocknum`, `.satnum`, `.sattab`,
+`.tabdims`, `.thpres`.
 
 ## Installation in VS Code
 
@@ -89,7 +123,7 @@ one, via the editor right-click menu:
    ```bash
    npm install -g @vscode/vsce
    vsce package
-   # produces opm-flow-0.2.0.vsix
+   # produces opm-flow-0.4.0.vsix
    ```
    Then in VS Code: **Extensions → ⋯ → Install from VSIX…** and select the `.vsix` file.
 
@@ -182,6 +216,22 @@ END
 ```
 
 ## Release Notes
+
+### 0.4.0
+
+- **Align Record Columns** command: tidies consecutive record lines so columns line up
+  (strings left-aligned, numerics right-aligned); comments and the closing `/` stay put
+- **Grammar expansion**: section headers (`RUNSPEC`, `GRID`, …) colored distinctly;
+  default/repeat markers `N*` scoped separately from numbers; template variables `<VAR>`
+  highlighted; single-quote auto-closing
+- **Parameter extraction fixes**:
+  - Multi-record keywords like `VFPPROD` / `VFPINJ` now show their full parameter tables
+    (previously empty because of composite indices like `1-1`, `1-2`)
+  - Keyword examples now appear in hover and in the sidebar docs panel (previously
+    silently dropped because the section-heading style wasn't recognized)
+- **Expanded file associations**: many additional Eclipse/OPM include-file extensions
+  (`.include`, `.schedule`, `.summary`, `.satnum`, `.fipnum`, `.pvt`, `.equil`, `.perm`,
+  `.poro`, `.ntg`, and more — see *Supported File Extensions*)
 
 ### 0.3.0
 

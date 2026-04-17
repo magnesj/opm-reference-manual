@@ -2,7 +2,7 @@
   "name": "opm-flow",
   "displayName": "OPM Flow",
   "description": "Language support for OPM Flow reservoir simulation deck files",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "engines": {
     "vscode": "^1.74.0"
   },
