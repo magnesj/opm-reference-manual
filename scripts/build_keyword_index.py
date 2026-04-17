@@ -139,20 +139,29 @@ def extract_raw_rows(table_elem) -> list[list[tuple[str, int]]]:
     return rows
 
 
+_PARAM_INDEX_RE = re.compile(r"^\d+(?:-\d+)?$")
+
+
+def _is_param_index(text: str) -> bool:
+    """Accept a bare integer ("1") or a grouped record index ("1-2", used by
+    multi-record keywords like VFPPROD/VFPINJ)."""
+    return bool(_PARAM_INDEX_RE.match(text.strip()))
+
+
 def is_param_row(cells: list[tuple[str, int]]) -> bool:
-    """True when the first cell is a bare integer (parameter index)."""
-    return bool(cells) and cells[0][0].strip().isdigit()
+    """True when the first cell is a parameter index."""
+    return bool(cells) and _is_param_index(cells[0][0])
 
 
 def is_unit_row(cells: list[tuple[str, int]]) -> bool:
     """
     True for the optional row that carries Field/Metric/Laboratory units.
-    These rows have exactly 3 single-span cells and no leading digit.
+    These rows have exactly 3 single-span cells and no leading parameter index.
     """
     return (
         len(cells) == 3
         and all(span == 1 for _, span in cells)
-        and not cells[0][0].strip().isdigit()
+        and not _is_param_index(cells[0][0])
         and not cells[0][0].strip().lower().startswith("note")
     )
 
@@ -184,7 +193,8 @@ def parse_param_table(table_elem) -> list[dict]:
             if pending_param is not None:
                 params.append(pending_param)
 
-            idx       = int(cells[0][0])
+            raw_idx = cells[0][0].strip()
+            idx: int | str = int(raw_idx) if raw_idx.isdigit() else raw_idx
             name      = cells[1][0] if len(cells) > 1 else ""
             # description is the cell with span=3 (index 2), default is last
             desc      = cells[2][0] if len(cells) > 2 else ""

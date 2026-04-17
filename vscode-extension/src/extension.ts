@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 interface Parameter {
-  index: number;
+  index: number | string;
   name: string;
   description: string;
   units: { field?: string; metric?: string; laboratory?: string };
